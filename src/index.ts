@@ -16,12 +16,15 @@ type ExpandedBlock = {
     beneficiary: string
     gasUsed: number
     totalScore: number
+    totalQuality?: number
     txsRoot: string
     txsFeatures: number
     stateRoot: string
     receiptsRoot: string
+    backerSignaturesRoot?: string
     signer: string
     isTrunk: boolean
+    backers?: string[]
     transactions: Array<{
         id: string
         chainTag: number
@@ -68,7 +71,8 @@ const writeOptions: IWriteOptions = { precision: 's', database }
 
 const networks: { [index: string]: string } = {
     '0x00000000851caf3cfdb6e899cf5958bfb1ac3413d346d43539627e6be7ec1b4a': 'main',
-    '0x000000000b2bce3c70bc649a02749e8687721b09ed2e15997f466536b20bb127': 'test'
+    '0x000000000b2bce3c70bc649a02749e8687721b09ed2e15997f466536b20bb127': 'test',
+    '0x0000000022d6ba16de61754e652d72226461eeac2559a3f099271f6704ff8d7c': '193'
 }
 
 const nodeURL = process.argv[2] || 'http://localhost:8669'
@@ -117,6 +121,7 @@ function buildRow(network: string, b: ExpandedBlock): IPoint {
             totalScore: b.totalScore,
             txCount: txs.length,
             clauseCount: txs.reduce((n, tx) => n + tx.clauses.length, 0),
+            backerCount: b.backers ? b.backers.length :0,
             paid: txs.reduce((n, tx) => n + parseInt(tx.paid), 0),
             reward: txs.reduce((n, tx) => n + parseInt(tx.reward), 0),
             newContractCount: txs.reduce((n, tx) => tx.outputs.reduce((n, o) => n + (o.contractAddress ? 1 : 0), n), 0),
