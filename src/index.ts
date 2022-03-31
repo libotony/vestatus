@@ -165,8 +165,8 @@ async function sync() {
     }, 1000)
 
     try {
-        const times = 20
-        const concurrent = 50
+        const times = 5
+        const concurrent = 20
 
         for (; ;) {
             const blocks = await blockFetcher.getBlocks(start, concurrent, times)
