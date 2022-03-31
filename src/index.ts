@@ -65,6 +65,12 @@ type ExpandedBlock = {
     }>
 }
 
+interface BlockFetcher {
+    network: string;
+    getBlock: (n: number | string) => Promise<ExpandedBlock | null>;
+    getBlocks: (start: number, concurrent: number, times: number) => Promise<(ExpandedBlock | null)[]>;
+}
+
 const database = 'vechain'
 const measurement = 'blocks'
 const writeOptions: IWriteOptions = { precision: 's', database }
@@ -141,12 +147,7 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function sync() {
-
-    const blockFetcher = await newBlockFetcher(nodeURL)
-    const db = new InfluxDB(influxdbURL)
-
-    await db.createDatabase(database)
+async function sync(blockFetcher: BlockFetcher, db: InfluxDB) {
     let start = await db.query<{ max_num: number }>(
         `select last(num) as max_num from blocks where network='${blockFetcher.network}'`,
         { database })
@@ -211,9 +212,13 @@ async function sync() {
 }
 
 (async () => {
+    const blockFetcher = await newBlockFetcher(nodeURL)
+    const db = new InfluxDB(influxdbURL)
+    await db.createDatabase(database)
+
     for (; ;) {
         try {
-            await sync()
+            await sync(blockFetcher, db)
         } catch (err) {
             console.log(err)
         }
