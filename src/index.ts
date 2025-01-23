@@ -5,62 +5,8 @@ import Axios from 'axios'
 import * as http from 'http'
 import * as https from 'https'
 import * as URL from 'url'
-
-type ExpandedBlock = {
-    number: number
-    id: string
-    size: number
-    parentID: string
-    timestamp: number
-    gasLimit: number
-    beneficiary: string
-    gasUsed: number
-    totalScore: number
-    txsRoot: string
-    txsFeatures: number
-    stateRoot: string
-    receiptsRoot: string
-    signer: string
-    isTrunk: boolean
-    transactions: Array<{
-        id: string
-        chainTag: number
-        blockRef: string
-        expiration: number
-        clauses: Array<{
-            to: string | null
-            value: string
-            data: string
-        }>
-        gasPriceCoef: number
-        gas: number
-        origin: string
-        delegator: string | null
-        nonce: string
-        dependsOn: string | null
-        size: number
-
-        // receipt part
-        gasUsed: number
-        gasPayer: string
-        paid: string
-        reward: string
-        reverted: boolean
-        outputs: Array<{
-            contractAddress: string | null
-            events: Array<{
-                address: string
-                topics: string[]
-                data: string
-            }>
-            transfers: Array<{
-                sender: string
-                recipient: string
-                amount: string
-            }>
-        }>
-    }>
-}
+import { ExpandedBlock } from './types'
+import { FeeMarket } from './feemarket'
 
 const database = 'vechain'
 const measurement = 'blocks'
@@ -100,6 +46,9 @@ async function newBlockFetcher(url: string) {
     return { network, getBlock, getBlocks }
 }
 
+const fee50 = new FeeMarket(2, 8)
+const fee75 = new FeeMarket(4 / 3, 8 / 3)
+
 function buildRow(network: string, b: ExpandedBlock): IPoint {
     const txs = b.transactions
     return {
@@ -126,7 +75,9 @@ function buildRow(network: string, b: ExpandedBlock): IPoint {
             revertedTxCount: txs.reduce((n, tx) => n + (tx.reverted ? 1 : 0), 0),
             transferCount: txs.reduce((n, tx) => tx.outputs.reduce((n, o) => n + o.transfers.length, n), 0),
             eventCount: txs.reduce((n, tx) => tx.outputs.reduce((n, o) => n + o.events.length, n), 0),
-            transferAmount: txs.reduce((n, tx) => tx.outputs.reduce((n, o) => o.transfers.reduce((n, t) => n + parseInt(t.amount), n), n), 0)
+            transferAmount: txs.reduce((n, tx) => tx.outputs.reduce((n, o) => o.transfers.reduce((n, t) => n + parseInt(t.amount), n), n), 0),
+            fee50: fee50.runBlock(b),
+            fee75: fee75.runBlock(b),
         },
         timestamp: b.timestamp
     }
@@ -137,7 +88,6 @@ function sleep(ms: number) {
 }
 
 async function sync() {
-
     const blockFetcher = await newBlockFetcher(nodeURL)
     const db = new InfluxDB(influxdbURL)
 
