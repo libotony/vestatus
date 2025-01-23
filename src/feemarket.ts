@@ -33,6 +33,7 @@ export class FeeMarket {
             }
         }
 
+        this.cache.put(block.number.toString(), baseFee)
         return baseFee / InitialFee
     }
 
